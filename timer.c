@@ -25,12 +25,12 @@ void enc_config(void){
 	LPC_TIM3->TCR = 0x01; // Activo TIMER 3
 	NVIC_EnableIRQ(TIMER2_IRQn); //Habilito la interrupción TIMER2
 	NVIC_EnableIRQ(TIMER3_IRQn); //Habilito la interrupción TIMER3
-	NVIC_SetPriority(TIMER2_IRQn,1); //Establezco la prioridad de la interrupción
+	NVIC_SetPriority(TIMER2_IRQn,3); //Establezco la prioridad de la interrupción
 	NVIC_SetPriority(TIMER3_IRQn,2); //Establezco la prioridad de la interrupción
 }
 void enc_set_dist_limit(int dist_cm, int wheel){
 	float n;
-	n=(dist_cm*RED*PPR*2)/(pi*DW); //Calculo el valor de tc
+	n=(dist_cm*RED*PPR*2)/(pi*DW)/2.5; //Calculo el valor de tc
 	if(wheel == RIGHT){ //Rueda derecha
 		LPC_TIM2->MR0 = n-1; //Establezco el valor MR0 para que sea igual a n
 		LPC_TIM2->MCR |=(0x3 <<0); //Se genera una interrupcion cuando tc=MR0 y resetea tc
@@ -48,7 +48,7 @@ void enc_set_dist_limit(int dist_cm, int wheel){
 }
 void enc_set_angle_limit(float angle_robot, int wheel){
 	float na;
-	na=(angle_robot*RED*2*PPR*DR)/(360*DW); //Calculo el valor de tc
+	na=(angle_robot*RED*2*PPR*DR)/(360*DW)/1.65; //Calculo el valor de tc
 	if(wheel == RIGHT) { //Rueda derecha
 		LPC_TIM2->MR0 = na; //Establezco el valor MR0 para que sea igual a na
 		LPC_TIM2->MCR |=(0x3 << 0); //Se genera una interrupcion cuando tc=MR0 y resetea tc

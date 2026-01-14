@@ -17,8 +17,9 @@
 
 static int16_t alarm_table[N_POINTS];
 static int alarm_idx;
-volatile float battery_voltage;
-char batBuffer[4];
+volatile float voltios_bateria;
+volatile float bateria;
+
 
 void float_to_char(float number, char *buffer) {
     int int_part = (int)number;
@@ -57,8 +58,8 @@ void battery_sampling_init(float Ts)
 	LPC_TIM0->MR1 = (F_pclk * Ts/2) - 1; //Configuro tiempo en Ts
 	LPC_TIM0->TCR |= 1; //Enciendo el TIMER 0
 	
-  NVIC_SetPriority(ADC_IRQn,10); //Pongo maxima prioridad al ADC
   NVIC_EnableIRQ(ADC_IRQn); //Habilito IRQ de ADC
+	NVIC_SetPriority(ADC_IRQn,8);
 }
 
 void battery_sampling_stop(void) {
@@ -110,8 +111,36 @@ void alarm_enable(int enable) {
 	else
 		LPC_TIM1->TCR &= ~CNT_EN; //Count disabled
 }
-void ADC_IRQHandler(void) {
-	battery_voltage = ((LPC_ADC->ADGDR >>4) & 0x0FFF)*Vref*voltageDiv/4096.0;  //Cojo el valor de la bateria de la conversion del ADC
-	float_to_char(battery_voltage,batBuffer);
-	GUI_Text(172,60,(uint8_t *)batBuffer,Blue,Black);
+float recoge_dato_bateria(void) { 
+ 
+  LPC_ADC->ADCR = ( 1 << 1 )          
+  // Seleccionar canal AD0.1 (divisor de tension) 
+                | ( 1 << 24 )         
+  // Iniciar conversión al escribir esto en el bit START 
+                | ( 1 << 21 );        
+  // Habilitar ADC 
+   
+ while ( ! ( LPC_ADC->ADGDR & ( 1 << 31 ) ) ); 
+ // Esperar a que la conversión termine 
+     
+ voltios_bateria = ((float)((LPC_ADC->ADGDR >> 4) & 0xFFF ) );  
+ // Guardamos en variable voltios_0 
+ 
+ bateria = voltios_bateria *((Vref*voltageDiv)/4095.0); 
+ return bateria;
+}
+
+void config_ADC(void){ 
+  
+   LPC_SC->PCONP |= ( 1 << 12 );//Periferico ADC encendido 
+  
+   LPC_PINCON->PINSEL1 |= ( 1 << 14 ) | ( 1 << 16 );//Pines P0.24 y P0.23   configurados como AD0.0 y AD0.1 
+  
+   LPC_PINCON->PINMODE1 |= ( 2 << 14 ) | ( 2 << 16 ); //PullUp y PullDown Deshabilitado 
+  
+   LPC_SC->PCLKSEL0 |= ( 0x00 << 8 );  //Frecuencia de reloj del Adc PCCLK/4 
+  
+   LPC_ADC->ADCR |= ( 0 << 0 )//Ningun Canal seleccionado 
+            | ( 0x01 << 8 )//CLKDIV=1   Frecuencia de conversion =(Fclk_ADC=25Mhz  /(1+1)= 12.5Mhz) 
+         | ( 0x01 << 21 );// PDN=1 
 }
